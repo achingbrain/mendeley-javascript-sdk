@@ -3,15 +3,17 @@
 
 var axios = require('axios');
 var Bluebird = require('bluebird');
+var mockAuth = require('../../mocks/auth');
 
 describe('profiles api', function() {
 
-    var api = require('../../../').API;
-    var profilesApi = api.profiles;
     var baseUrl = 'https://api.mendeley.com';
-
-    var mockAuth = require('../../mocks/auth');
-    api.setAuthFlow(mockAuth.mockImplicitGrantFlow());
+    var api = require('../../../')({
+      baseUrl: baseUrl,
+      authFlow: mockAuth.mockImplicitGrantFlow(),
+      devToken: 'Dev token'
+    });
+    var profilesApi = api.profiles;
 
     var mockPromiseUpdate = Bluebird.resolve({
         data: [],
@@ -59,6 +61,11 @@ describe('profiles api', function() {
         it('should have an Authorization header', function() {
             expect(ajaxRequest.headers.Authorization).toBeDefined();
             expect(ajaxRequest.headers.Authorization).toBe('Bearer auth');
+        });
+
+        it('should have an Development header', function() {
+            expect(ajaxRequest.headers['Development-Token']).toBeDefined();
+            expect(ajaxRequest.headers['Development-Token']).toBe('Dev token');
         });
 
         it('should NOT have a body', function() {

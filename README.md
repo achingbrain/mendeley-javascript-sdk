@@ -207,9 +207,7 @@ Here's an example using [requirejs][]:
 
 ```javascript
 define(function(require) {
-    var sdk = require('@mendeley/api')({
-      authFlow:
-    });
+    var sdk = require('@mendeley/api')
     var api = sdk({
       authFlow: sdk.Auth.authCodeFlow()
     })
@@ -225,6 +223,18 @@ define(function(require) {
         console.log('Status:', response.status);
 
     });
+});
+```
+
+## Dev tokens
+
+If you are using beta endpoints please acquire a development token from [the Mendeley developers site][] and pass it to the api function:
+
+```javascript
+var sdk = require('@mendeley/api')
+var api = sdk({
+  authFlow: sdk.Auth.authCodeFlow(),
+  devToken: 'My dev token'
 });
 ```
 
