@@ -253,9 +253,8 @@ describe('auth', function() {
             expect(authFlow.getToken()).toBeUndefined();
 
             authFlow.refreshToken()
-            .then(function (result) {
+            .then(function () {
                 expect(authFlow.getToken()).toEqual(accessToken);
-                expect(result.accessToken).toEqual(accessToken);
 
                 done();
             });

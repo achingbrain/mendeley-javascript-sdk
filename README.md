@@ -146,14 +146,49 @@ The options are:
 - `tokenUrl` - Where we get the access token from, defaults to `https://api.mendeley.com/oauth/token`
 - `clientId` - your client id obtained when you register your app
 - `clientSecret` - Your client secret obtained when you register your app
-- `onAccessToken` - An optional callback function invoked when the access token changes with the signature `(accessToken, expiresIn)`. Use this to set cookies, etc.
-- `onRefreshToken` - An optional callback function invoked when a refresh token is received with the signature `(refreshToken)`. Use this to store the refresh token securely, etc.
 - `accessToken` - If you have an access token from a previous request, specify it to save the initial token exchange request
 
-A full example using [Express][] middleware might be:
+#### When access tokens are refreshed
+
+If an access token is refreshed, you can obtain it's value by listening for the `accessToken` event on the api instance:
 
 ```javascript
-module.exports = function (request, response, next) {
+var sdk = require('@mendeley/api');
+var api = sdk({
+  authFlow: sdk.Auth.refreshTokenFlow({
+    refreshToken: /* refresh token */,
+    clientId: /* your client id */,
+    clientSecret: /* your client secret */
+  })
+});
+api.on('accessToken', (accessToken, expiresIn) => {
+  // perhaps set accessToken as a cookie here...
+})
+```
+
+## Events
+
+### `accessToken`
+
+This event is emitted when an access token has been refreshed.
+
+### `authenticate`
+
+This event is emitted when we have failed to fetch a new accessToken.  The user should be redirected to the Mendeley oauth authentication page.
+
+## Example
+
+A full example using the refresh token flow and [Express][] middleware might be:
+
+```javascript
+var express = require('express');
+var cookies = require('cookie-parser');
+var qs = require('querystring');
+var mendeley = require('@mendeley/api')
+
+// middleware to set up the Mendeley API on the response.locals object
+// see: http://expressjs.com/en/api.html#res.locals
+function mendeleyApi (request, response, next) {
   if (!request.cookies.refreshToken) {
     // no valid credentials
     return next();
@@ -164,22 +199,41 @@ module.exports = function (request, response, next) {
       accessToken: request.cookies.accessToken, // will be used if previously set
       refreshToken: request.cookies.refreshToken,
       clientId: process.env.MENDELEY_CLIENT_ID,
-      clientSecret: process.env.MENDELEY_CLIENT_SECRET,
-      onAccessToken: function (accessToken, expiresIn) {
-          // set the accessToken cookie for use on the next request
-          response.cookie('accessToken', accessToken, {
-            maxAge: expiresIn,
-            httpOnly: false
-          });
-        }
-      })
+      clientSecret: process.env.MENDELEY_CLIENT_SECRET
+    })
+  });
+
+  response.locals.mendeley.on('accessToken', function (accessToken, expiresIn) {
+    // set the accessToken cookie for use on the next request
+    response.cookie('accessToken', accessToken, {
+      path: '/',
+      maxAge: expiresIn
     });
+  });
 
-    return next();
-  }
+  response.locals.mendeley.on('authenticate', function () {
+    response.redirect('https://api.mendeley.com/oauth/authorize?' + qs.stringify({
+      client_id: process.env.MENDELEY_CLIENT_ID,
+      redirect_uri: process.env.MENDELEY_REDIRECT_URI, // set when you register your app
+      response_type: 'token',
+      scope: 'all'
+    }));
+  });
+
+  return next();
 };
-```
 
+var app = express();
+app.use(cookies())
+app.use(mendeleyApi);
+app.get('/me', function function (request, response) {
+  return response.locals.mendeley.profiles.me()
+  .then(function (profile) {
+    response.send(profile);
+  });
+});
+app.listen(8080);
+```
 
 ## Basic Usage
 

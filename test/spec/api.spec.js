@@ -1,6 +1,8 @@
 /* jshint sub: true */
 'use strict';
 
+var EventEmitter = require('wildemitter');
+
 describe('api endpoints', function() {
 
     var api = require('../../').API;
@@ -45,8 +47,22 @@ describe('api endpoints', function() {
     describe('multiple instances', function() {
       var sdk = require('../../');
 
+      it('should require options', function() {
+          expect(function () {
+            sdk();
+          }).toThrow();
+      });
+
+      it('should require an authFlow argument', function() {
+          expect(function () {
+            sdk({});
+          }).toThrow();
+      });
+
       it('should object strenuously when accessing the global api and using instances', function() {
-          var api = sdk({});
+          var api = sdk({
+            authFlow: true
+          });
 
           expect(function () {
               sdk.API.toString()
@@ -111,5 +127,25 @@ describe('api endpoints', function() {
       });
     })
 
+    describe('events', function() {
+      var sdk = require('../../');
+
+      it('should forward auth events', function(done) {
+          var authFlow = new EventEmitter();
+          var api = sdk({
+              authFlow: authFlow
+          });
+
+          api.on('an_event', function (arg1, arg2) {
+              expect(arg1).toEqual(1);
+              expect(arg2).toEqual(2);
+
+              done();
+          });
+
+          authFlow.emit('an_event', 1, 2);
+      });
+
+    });
 });
 /* jshint sub: false */
